@@ -1,0 +1,2 @@
+# Advent of Code 2019
+This repository contains my solutions for the [advent of code 2019](https://adventofcode.com/2019). People have various goals when partaking in this annual event, be it learning a new language, sharpening their skills, trying out TDD or something else. This year my focus is on solving the problems as quickly as possible. The resulting code is not always the nicest and might even output only parts of the answers (e.g. in case the full answer can be trivially derived)
