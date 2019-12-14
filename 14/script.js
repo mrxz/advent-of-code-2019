@@ -126,9 +126,6 @@ depth = 0;
 while(elements.length) {
     const newElements = [];
     for(let e of elements) {
-        if(e in prio) {
-            console.log("Encountering element again", e, prio[e], depth);
-        }
         prio[e] = depth;
         
         conversions.filter(c => c.from.some(ce => ce.element === e))
@@ -138,30 +135,46 @@ while(elements.length) {
     elements = newElements;
 }
 
-
-let state = {"FUEL": 1}
-while(!(Object.keys(state).length == 1 && Object.keys(state)[0] === "ORE")) {
-    const conversion = Object.keys(state).filter(e => e !== "ORE")
-        .map(e => map[e])
-        .reduce((agg, cur) => (!agg || prio[agg.to.element] < prio[cur.to.element]) ? cur : agg);
-    
-    const newState = {}
-    for(let element of Object.keys(state)) {
-        if(element === conversion.to.element) {
-            continue;
-        }
-        newState[element] = state[element]
-    }
+compute = (targetFuelAmount) => {
+    let state = {"FUEL": targetFuelAmount}
+    while(!(Object.keys(state).length == 1 && Object.keys(state)[0] === "ORE")) {
+        const conversion = Object.keys(state).filter(e => e !== "ORE")
+            .map(e => map[e])
+            .reduce((agg, cur) => (!agg || prio[agg.to.element] < prio[cur.to.element]) ? cur : agg);
         
-    // Apply conversion
-    const times = Math.ceil(state[conversion.to.element] / conversion.to.amount)
-    for(let element of conversion.from) {
-        newState[element.element] = (newState[element.element] || 0) + (element.amount * times);
+        const newState = {}
+        for(let element of Object.keys(state)) {
+            if(element === conversion.to.element) {
+                continue;
+            }
+            newState[element] = state[element]
+        }
+            
+        // Apply conversion
+        const times = Math.ceil(state[conversion.to.element] / conversion.to.amount)
+        for(let element of conversion.from) {
+            newState[element.element] = (newState[element.element] || 0) + (element.amount * times);
+        }
+        
+        state = newState
     }
-    
-    state = newState
+    return state;
 }
-
+state = compute(1)
 console.log(state);
 
 
+// Part 2
+const target = 1000000000000
+let lower = Math.floor(target / state["ORE"])
+let upper = lower * 2;
+while(lower !== upper - 1) { 
+    let middle = Math.ceil((lower + upper) / 2)
+    let middleState = compute(middle);
+    if(middleState["ORE"] < target ) {
+        lower = middle;
+    } else {
+        upper = middle;
+    }
+    console.log(lower, upper, middle, middleState["ORE"])
+}
