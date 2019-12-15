@@ -81,6 +81,7 @@ debug = false
 running = true;
 let direction = 1;
 let pos = {x: 0, y: 0};
+let goal = null
 while(running) {
     opcode = data[pc] % 100
     modes = ("0".repeat(5 - (""+data[pc]).length) + data[pc]).split("").map(x => +x)
@@ -121,13 +122,20 @@ while(running) {
                 field[`${newPos.x},${newPos.y}`] = '#'
                 // Rotate back
                 direction = right(direction)
-            } else if(status == 1) {
+            } else if(status > 0) {
                 field[`${pos.x},${pos.y}`] = '.'
                 pos = newPos
                 field[`${pos.x},${pos.y}`] = " ^V<>"[direction]
-            } else if(status == 2) {
-                console.log("Found exit");
-                running = false;
+                if(status == 2) {
+                    console.log("Found exit");
+                    goal = {x: pos.x, y: pos.y}
+                    //running = false;
+                }
+                if(pos.x === 0 && pos.y === 0) {
+                    field[`${pos.x},${pos.y}`] = "."
+                    console.log("Fully explored");
+                    running = false;
+                }
             }
             drawField()
             pc += 2;
@@ -221,7 +229,7 @@ const aStart = (start, goal, h)  => {
 }
 
 
-path = aStart("0,0", `${pos.x},${pos.y}`, (pos, goal) => {
+path = aStart("0,0", `${goal.x},${goal.y}`, (pos, goal) => {
     const posX = +pos.split(",")[0]
     const posY = +pos.split(",")[1]
     const goalX = +goal.split(",")[0]
@@ -230,4 +238,45 @@ path = aStart("0,0", `${pos.x},${pos.y}`, (pos, goal) => {
 })
 console.log(`${pos.x},${pos.y}`)
 console.log(path.reverse().join(' > '))
-console.log(path.length)
+console.log(path.length - 1)
+
+const drawFieldWithPath = (path) => {
+    let minX = Object.keys(field).map(k => +k.split(",")[0]).reduce((a,b) => Math.min(a, b), Number.MAX_VALUE)
+    let maxX = Object.keys(field).map(k => +k.split(",")[0]).reduce((a,b) => Math.max(a, b), -Number.MAX_VALUE)
+    let minY = Object.keys(field).map(k => +k.split(",")[1]).reduce((a,b) => Math.min(a, b), Number.MAX_VALUE)
+    let maxY = Object.keys(field).map(k => +k.split(",")[1]).reduce((a,b) => Math.max(a, b), -Number.MAX_VALUE)
+    for(let y = minY; y <= maxY; y++) {
+        let line = []
+        for(let x = minX; x <= maxX; x++) {
+            if(x === 0 && y === 0) {
+                line.push('@')
+            } else if(path.indexOf(`${x},${y}`) !== -1) {
+                line.push('⋄')
+            } else {
+                line.push(field[`${x},${y}`] || ' ')
+            }
+        }
+        console.log(line.join(''))
+    }
+}
+drawFieldWithPath(path)
+
+// Part 2
+let t = 0
+field[`${goal.y},${goal.y}`] = 'O'
+while(Object.values(field).indexOf('.') !== -1) {
+    t++;
+    const oxygens = Object.entries(field).filter(e => e[1] === 'O').map(e => e[0])
+    for(let oxygen of oxygens) {
+        let oPos = {x: +oxygen.split(",")[0], y: +oxygen.split(",")[1]};
+        for(dir of [1,2,3,4]) {
+            let neighbourPos = move(oPos, dir)
+            if(field[`${neighbourPos.x},${neighbourPos.y}`] === '.') {
+                field[`${neighbourPos.x},${neighbourPos.y}`] = 'O'
+            }
+        }
+    }
+    
+    drawField()
+}
+console.log(t)
