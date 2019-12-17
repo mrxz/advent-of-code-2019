@@ -25,104 +25,183 @@ write = (mode, addr, value) => {
     }
 }
 
-pc = 0;
-rb = 0;
-debug = true
-running = true;
-field = {}
-x = 0, y = 0
-maxX = 0, maxY = 0
-while(running) {
-    opcode = data[pc] % 100
-    modes = ("0".repeat(5 - (""+data[pc]).length) + data[pc]).split("").map(x => +x)
-    switch(opcode) {
-        case 1:
-        case 2:
-            if(debug) console.log(pc, modes.join(""), opcode === 2 ? "mul" : "add", data[pc + 1], data[pc + 2], data[pc + 3])
-            src1 = read(modes[2], pc + 1)
-            src2 = read(modes[1], pc + 2)
-            
-            dest = data[pc + 3]
-            write(modes[0], pc + 3, opcode === 2 ? (src1 * src2) : (src1 + src2))
-            
-            pc += 4;
-            break;
-        case 3:
-            if(debug) console.log(pc, modes.join(""), "input", data[pc + 1])
-            write(modes[2], pc + 1, 2)
-            pc += 2;
-            break
-        case 4:
-            if(debug) console.log(pc, modes.join(""), "output", data[pc + 1])
-            src1 = read(modes[2], pc + 1)
-            if(String.fromCharCode(src1) === '\n') {
-                y = ++maxY
-                x = 0;
-            } else if(String.fromCharCode(src1) === '#') {
-                field[`${x},${y}`] = '#'
-                x++
-            } else {
-                field[`${x},${y}`] = String.fromCharCode(src1)
-                x++
-            }
-            if(x > maxX) {
-                maxX = x;
-            }
-            
-            pc += 2;
-            break
-        case 5:
-        case 6:
-            if(debug) console.log(pc, modes.join(""), opcode === 5 ? "jump-if-true" : "jump-if-false", data[pc + 1], data[pc + 2])
-            src1 = read(modes[2], pc + 1)
-            dest = read(modes[1], pc + 2) 
-            if(opcode === 5 ? !!src1 : !src1) {
-                pc = dest
-            } else {
-                pc += 3;
-            }
-            break;
-        case 7:
-            if(debug) console.log(pc, modes.join(""), "<", data[pc + 1], data[pc + 2], data[pc + 3])
-            src1 = read(modes[2], pc + 1)
-            src2 = read(modes[1], pc + 2)
-            write(modes[0], pc + 3, src1 < src2 ? 1 : 0)
-            pc += 4
-            break;
-        case 8:
-            if(debug) console.log(pc, modes.join(""), "==", data[pc + 1], data[pc + 2], data[pc + 3])
-            src1 = read(modes[2], pc + 1)
-            src2 = read(modes[1], pc + 2)
-            write(modes[0], pc + 3, src1 === src2 ? 1 : 0)
-            pc += 4
-            break;
-        case 9:
-            if(debug) console.log(pc, modes.join(""), "arb", data[pc + 1])
-            rb += read(modes[2], pc + 1)
-            pc += 2
-            break;
-        case 99:
-            running = false;
-            break;
-        default:
-            console.log("unknown opcode", opcode)
-            break;
+const execute = (data, input) => {
+    pc = 0;
+    rb = 0;
+    debug = false
+    running = true;
+    field = {}
+    x = 0, y = 0
+    maxX = 0, maxY = 0
+    inputPtr = 0;
+    let line = ""
+    while(running) {
+        opcode = data[pc] % 100
+        modes = ("0".repeat(5 - (""+data[pc]).length) + data[pc]).split("").map(x => +x)
+        switch(opcode) {
+            case 1:
+            case 2:
+                if(debug) console.log(pc, modes.join(""), opcode === 2 ? "mul" : "add", data[pc + 1], data[pc + 2], data[pc + 3])
+                src1 = read(modes[2], pc + 1)
+                src2 = read(modes[1], pc + 2)
+                
+                dest = data[pc + 3]
+                write(modes[0], pc + 3, opcode === 2 ? (src1 * src2) : (src1 + src2))
+                
+                pc += 4;
+                break;
+            case 3:
+                if(debug) console.log(pc, modes.join(""), "input", data[pc + 1])
+                const el = input[inputPtr++].charCodeAt(0)
+                console.log(el)
+                write(modes[2], pc + 1, el)
+                pc += 2;
+                break
+            case 4:
+                if(debug) console.log(pc, modes.join(""), "output", data[pc + 1])
+                src1 = read(modes[2], pc + 1)
+                if(String.fromCharCode(src1) === '\n') {
+                    console.log(line)
+                    line = ""
+                    y = ++maxY
+                    x = 0;
+                } else if(src1 < 256) {
+                    line += String.fromCharCode(src1)
+                    field[`${x},${y}`] = String.fromCharCode(src1)
+                    x++
+                } else {
+                    console.log(src1)
+                }
+                if(x > maxX) {
+                    maxX = x;
+                }
+                
+                pc += 2;
+                break
+            case 5:
+            case 6:
+                if(debug) console.log(pc, modes.join(""), opcode === 5 ? "jump-if-true" : "jump-if-false", data[pc + 1], data[pc + 2])
+                src1 = read(modes[2], pc + 1)
+                dest = read(modes[1], pc + 2) 
+                if(opcode === 5 ? !!src1 : !src1) {
+                    pc = dest
+                } else {
+                    pc += 3;
+                }
+                break;
+            case 7:
+                if(debug) console.log(pc, modes.join(""), "<", data[pc + 1], data[pc + 2], data[pc + 3])
+                src1 = read(modes[2], pc + 1)
+                src2 = read(modes[1], pc + 2)
+                write(modes[0], pc + 3, src1 < src2 ? 1 : 0)
+                pc += 4
+                break;
+            case 8:
+                if(debug) console.log(pc, modes.join(""), "==", data[pc + 1], data[pc + 2], data[pc + 3])
+                src1 = read(modes[2], pc + 1)
+                src2 = read(modes[1], pc + 2)
+                write(modes[0], pc + 3, src1 === src2 ? 1 : 0)
+                pc += 4
+                break;
+            case 9:
+                if(debug) console.log(pc, modes.join(""), "arb", data[pc + 1])
+                rb += read(modes[2], pc + 1)
+                pc += 2
+                break;
+            case 99:
+                running = false;
+                break;
+            default:
+                console.log("unknown opcode", opcode)
+                break;
+        }
     }
 }
 
+const drawField = (intersections) => {
+    let line = "";
+    for(let i = 0; i < maxY - 1; i++) {
+        for(let j = 0; j < maxX; j++) {
+            if(intersections.findIndex(x => x.x === j && x.y === i) !== -1) {
+                line += 'O'
+            } else {
+                line += field[`${j},${i}`]
+            }
+        }
+        line += "\n"
+    }
+
+    console.log(line)
+}
+
+// Part 1
+execute(data)
 const intersections = []
-let line = ""
 for(let i = 1; i < maxX - 1; i++) {
     for(let j = 1; j < maxY - 1; j++) {
         if(field[`${i},${j}`] === '#' && field[`${i - 1},${j}`] === '#' && field[`${i + 1},${j}`] === '#' && field[`${i},${j - 1}`] === '#' && field[`${i},${j + 1}`] === '#') {
             intersections.push({x: i, y: j})
-            line += "O"
-        } else {
-            line += field[`${i},${j}`]
         }
     }
-    line += "\n"
+}
+drawField(intersections)
+console.log(intersections.reduce((agg, cur) => agg + cur.x * cur.y, 0))
+
+// Part 2
+
+// Find the full path
+let direction = 0
+let pos = {x: 0, y: 0}
+const move = (pos, direction) => {
+    if(direction === 0) return {x: pos.x, y: pos.y - 1}
+    if(direction === 1) return {x: pos.x + 1, y: pos.y}
+    if(direction === 2) return {x: pos.x, y: pos.y + 1}
+    if(direction === 3) return {x: pos.x - 1, y: pos.y}
+}
+const right = (direction) => {
+    return (direction + 1) % 4
+}
+const left = (direction) => {
+    return (direction + 3) % 4
 }
 
-console.log(line)
-console.log(intersections.reduce((agg, cur) => agg + cur.x * cur.y, 0))
+// Find start position
+startPos = Object.keys(field).find(k => field[k] === '^').split(",").map(x => +x)
+pos.x = startPos[0]
+pos.y = startPos[1]
+console.log('Start position:', pos)
+
+const steps = []
+while(Object.values(field).indexOf('#') !== -1) {
+    // Rotate
+    const leftPos = move(pos, left(direction));
+    if(field[`${leftPos.x},${leftPos.y}`] === '#') {
+        console.log('Rotating left')
+        direction = left(direction)
+        steps.push('L')
+    } else {
+        console.log('Rotating Right')
+        direction = right(direction)
+        steps.push('R')
+    }
+    // Move
+    let count = 0;
+    do {
+        count++;
+        field[`${pos.x},${pos.y}`] = 'Z'
+        pos = move(pos, direction)
+    } while("#Z".indexOf(field[`${move(pos, direction).x},${move(pos, direction).y}`]) !== -1)
+    console.log('Moved', count, 'steps')
+    steps.push(count)
+}
+console.log(steps.join(','))
+
+data = program.split(",").map(x => +x)
+data[0] = 2
+input = [
+    ..."A,B,A,C,B,C,B,A,C,B\n",
+    ..."L,6,R,8,R,12,L,6,L,8\n",
+    ..."L,10,L,8,R,12\n",
+    ..."L,8,L,10,L,6,L,6\n",
+    ..."y\n"]
+execute(data, input)
