@@ -12,6 +12,7 @@ const input = [
 "#d.....................#",
 "########################",
 ]*/
+/*
 const input = [
 "#################",
 "#i.G..c...e..H.p#",
@@ -22,8 +23,8 @@ const input = [
 "########.########",
 "#l.F..d...h..C.m#",
 "#################"
-]
-/*
+]*/
+
 const input = [
 "#################################################################################",
 "#.#..a....#...#..........y..#.#.........#.I...#...#.....#.............#.......#.#",
@@ -106,49 +107,49 @@ const input = [
 "###.#.#N###.#######.#.#.#######.###.###.#.#.#.###.#######.###.#.#.#.#.#######.#.#",
 "#.....#.............#...#........i..#...#.....#.............#...#.........B.#...#",
 "#################################################################################",
-]*/
+]
 const width = input[0].length;
 const height = input.length;
 const keys = [...input.join("")].reduce((agg, cur) => {
     if("abcdefghijklmnopqrstuvwxyz".indexOf(cur) !== -1)
         agg.push(cur)
     return agg
-}, [])
-console.log(keys)
+}, []).join("")
+const field = input.join("")
 
-const drawField = (field) => {
+const read = (field, x, y) => {
+    return field[y * width + x] || '#'
+}
+
+const drawField = (field, state) => {
     let output = ""
     for(let y = 0; y < height; y++) {
         for(let x = 0; x < width; x++) {
-            output += field[y * width + x]
+            const tile = read(field, x, y)
+            if(x == state.split(",")[0] && y == state.split(",")[1]) {
+                output += '@'
+            } else if(state.split(",")[2].indexOf(tile.toLowerCase()) !== -1 || tile === '@') {
+                output += '.'
+            } else {
+                output += tile
+            }
         }
         output += "\n"
     }
     console.log(output)
 }
-
-drawField(input.join(""))
+drawField(field, "0,0,,")
 
 // Part 1
-const read = (field, x, y) => {
-    return field[y * width + x] || '#'
-}
-const write = (field, x, y, value) => {
-    field[y * width + x] = value
-} 
-
 const findNeighbours = (state) => {
-    const parts  = state.split("|")
-    const field = parts[0]
-    const keys = parts[1]
-    
-    const pos = field.indexOf('@')
-    const x = pos % width
-    const y = ~~(pos / width)
+    const parts  = state.split(",")
+    const x = +parts[0]
+    const y = +parts[1]
+    const keyState = parts[2]
     
     const isPassable = (tile) => {
-        return ".abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1
-            || keys.indexOf(tile.toLowerCase()) !== -1;
+        return "@.abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1
+            || keyState.indexOf(tile.toLowerCase()) !== -1;
     }
     
     const result = []
@@ -159,25 +160,26 @@ const findNeighbours = (state) => {
         const ny = option[1]
         let tile = read(field, nx, ny)
         if(isPassable(tile)) {
-            const newState = [...field]
-            write(newState, x, y, '.')
-            write(newState, nx, ny, '@')
-            let newKeys = [...keys]
-            if(".abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1) {
-                if(tile !== '.') {
-                    newKeys.push(tile)
-                    newKeys = newKeys.sort()
-                }
+            let newKeys = [...keyState]
+            if("abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1 && keyState.indexOf(tile) === -1) {
+                newKeys.push(tile)
+                newKeys = newKeys.sort()
             }
-            result.push(newState.join("") + "|" + newKeys.join(""))
+            result.push([nx, ny, newKeys.join("")].join(","))
         }
     }
 
     return result;
 }
 
-let keyState = []
-let state = input.join("") + "|" + keyState.join("")
+let state = ""
+{
+    const pos = field.indexOf('@')
+    const x = pos % width
+    const y = ~~(pos / width)
+    state = [x, y, ""].join(",")
+}
+
 let visited = new Set([])
 let open = new Set([state])
 let running = true
@@ -186,9 +188,9 @@ while(running) {
     let newOpen = new Set([])
     for(let state of open) {
         visited.add(state);
-        if(state.split("|")[1].length === keys.length) {
-            drawField(state)
-            console.log("found solution in", steps, state.split("|")[1])
+        if(state.split(",")[2].length === keys.length) {
+            drawField(field, state)
+            console.log("found solution in", steps, state)
             running = false
             break
         }
@@ -202,7 +204,7 @@ while(running) {
         }
     }
     
-    console.log('Steps', steps, open.length, newOpen.length)
+    console.log('Steps', steps, open.size, newOpen.size)
     open = newOpen
     steps++
 }
