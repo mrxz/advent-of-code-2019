@@ -24,6 +24,16 @@ const input = [
 "#l.F..d...h..C.m#",
 "#################"
 ]*/
+/*
+const input = [
+"#############",
+"#DcBa.#.GhKl#",
+"#.###...#I###",
+"#e#d#.@.#j#k#",
+"###C#...###J#",
+"#fEbA.#.FgHi#",
+"#############"
+]*/
 
 const input = [
 "#################################################################################",
@@ -115,10 +125,13 @@ const keys = [...input.join("")].reduce((agg, cur) => {
         agg.push(cur)
     return agg
 }, []).join("")
-const field = input.join("")
+const field = [...input.join("")]
 
 const read = (field, x, y) => {
     return field[y * width + x] || '#'
+}
+const write = (field, x, y, value) => {
+    return field[y * width + x] = value
 }
 
 const drawField = (field, state) => {
@@ -126,9 +139,9 @@ const drawField = (field, state) => {
     for(let y = 0; y < height; y++) {
         for(let x = 0; x < width; x++) {
             const tile = read(field, x, y)
-            if(x == state.split(",")[0] && y == state.split(",")[1]) {
+            if(state.split(",").indexOf(`${x}|${y}`) !== -1) {
                 output += '@'
-            } else if(state.split(",")[2].indexOf(tile.toLowerCase()) !== -1 || tile === '@') {
+            } else if(state.split(",")[0].indexOf(tile.toLowerCase()) !== -1 || tile === '@') {
                 output += '.'
             } else {
                 output += tile
@@ -138,75 +151,213 @@ const drawField = (field, state) => {
     }
     console.log(output)
 }
+
+// Update field for part 2
+const positions = []
+{
+    const pos = field.indexOf('@')
+    const x = pos % width
+    const y = ~~(pos / width)
+    write(field, x, y, '#')
+    write(field, x - 1, y, '#')
+    write(field, x + 1, y, '#')
+    write(field, x, y - 1, '#')
+    write(field, x, y + 1, '#')
+    //positions.push([x, y])
+    positions.push([x - 1, y - 1])
+    positions.push([x + 1, y - 1])
+    positions.push([x - 1, y + 1])
+    positions.push([x + 1, y + 1])
+}
+
 drawField(field, "0,0,,")
 
 // Part 1
 const findNeighbours = (state) => {
     const parts  = state.split(",")
-    const x = +parts[0]
-    const y = +parts[1]
-    const keyState = parts[2]
+    const keyState = parts[0]
     
     const isPassable = (tile) => {
-        return "@.abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1
+        return "@.abcdefghijklmnopqrstuvwxyz".indexOf(tile.toLowerCase()) !== -1
             || keyState.indexOf(tile.toLowerCase()) !== -1;
     }
     
     const result = []
     
-    // Up, Down, Left, Right
-    for(let option of [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]]) {
-        const nx = option[0]
-        const ny = option[1]
-        let tile = read(field, nx, ny)
-        if(isPassable(tile)) {
-            let newKeys = [...keyState]
-            if("abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1 && keyState.indexOf(tile) === -1) {
-                newKeys.push(tile)
-                newKeys = newKeys.sort()
+    // Robots
+    for(let i = 1; i < parts.length; i++) {
+        const position = parts[i].split("|")
+        const x = +position[0]
+        const y = +position[1]
+
+        // Up, Down, Left, Right
+        for(let option of [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]]) {
+            const nx = option[0]
+            const ny = option[1]
+            let tile = read(field, nx, ny)
+            if(isPassable(tile)) {
+                let newKeys = [...keyState]
+                if("abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1 && keyState.indexOf(tile) === -1) {
+                    newKeys.push(tile)
+                    newKeys = newKeys.sort()
+                }
+                const newState = [...parts]
+                newState[0] = newKeys.join("")
+                newState[i] = nx + "|" + ny
+                result.push(newState.join(","))
             }
-            result.push([nx, ny, newKeys.join("")].join(","))
         }
     }
 
     return result;
 }
 
-let state = ""
-{
-    const pos = field.indexOf('@')
-    const x = pos % width
-    const y = ~~(pos / width)
-    state = [x, y, ""].join(",")
-}
-
-let visited = new Set([])
-let open = new Set([state])
-let running = true
-let steps = 0
-while(running) {
-    let newOpen = new Set([])
-    for(let state of open) {
-        visited.add(state);
-        if(state.split(",")[2].length === keys.length) {
-            drawField(field, state)
-            console.log("found solution in", steps, state)
-            running = false
-            break
+const search = (state, keys) => {
+    let visited = new Set([])
+    let open = new Set([state])
+    let running = true
+    let steps = 0
+    while(running && open.size) {
+        let newOpen = new Set([])
+        for(let state of open) {
+            visited.add(state);
+            if(state.split(",")[0].length === keys.length) {
+                drawField(field, state)
+                console.log("found solution in", steps, state)
+                running = false
+                return steps
+                break
+            }
+            
+            // Check neighbours
+            for(let neighbour of findNeighbours(state)) {
+                if(visited.has(neighbour)) {
+                    continue;
+                }
+                newOpen.add(neighbour);
+            }
         }
         
-        // Check neighbours
-        for(let neighbour of findNeighbours(state)) {
-            if(visited.has(neighbour)) {
-                continue;
+        //console.log('Steps', steps, open.size, newOpen.size)
+        open = newOpen
+        steps++
+    }
+    return -1
+}
+
+let sum = 0
+// Top-left
+{
+    const keysPresent = new Set()
+    const doorsPresent = new Set()
+    for(let x = 0; x < width / 2; x++) {
+        for(let y = 0; y < height / 2; y++) {
+            const tile = read(field, x, y)
+            if("abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1) {
+                keysPresent.add(tile)
+            } else if("abcdefghijklmnopqrstuvwxyz".indexOf(tile.toLowerCase()) !== -1) {
+                doorsPresent.add(tile)
             }
-            newOpen.add(neighbour);
         }
     }
+    console.log(keysPresent, doorsPresent)
     
-    console.log('Steps', steps, open.size, newOpen.size)
-    open = newOpen
-    steps++
+    // Check the keys outside their quadrant
+    const pos = positions[0]
+    let state = ""
+    {
+        const parts = [""]
+        parts.push(pos[0] + "|" + pos[1])
+        state = parts.join(",")
+    }
+    const steps = search(state, [...keysPresent])
+    console.log('Steps', steps)
+    sum += steps
 }
+// Top-Right
+{
+    const keysPresent = new Set()
+    const doorsPresent = new Set()
+    for(let x = ~~(width / 2); x < width; x++) {
+        for(let y = 0; y < height / 2; y++) {
+            const tile = read(field, x, y)
+            if("abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1) {
+                keysPresent.add(tile)
+            } else if("abcdefghijklmnopqrstuvwxyz".indexOf(tile.toLowerCase()) !== -1) {
+                doorsPresent.add(tile)
+            }
+        }
+    }
+    console.log(keysPresent, doorsPresent)
+    
+    // Check the keys outside their quadrant
+    const pos = positions[1]
+    let state = ""
+    {
+        const parts = [""]
+        parts.push(pos[0] + "|" + pos[1])
+        state = parts.join(",")
+    }
+    const steps = search(state, [...keysPresent])
+    console.log('Steps', steps)
+    sum += steps
+}
+// Bottom-left
+{
+    const keysPresent = new Set()
+    const doorsPresent = new Set()
+    for(let x = 0; x < width / 2; x++) {
+        for(let y = ~~(height / 2); y < height; y++) {
+            const tile = read(field, x, y)
+            if("abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1) {
+                keysPresent.add(tile)
+            } else if("abcdefghijklmnopqrstuvwxyz".indexOf(tile.toLowerCase()) !== -1) {
+                doorsPresent.add(tile)
+            }
+        }
+    }
+    console.log(keysPresent, doorsPresent)
+    
+    // Check the keys outside their quadrant
+    const pos = positions[2]
+    let state = ""
+    {
+        const parts = [""]
+        parts.push(pos[0] + "|" + pos[1])
+        state = parts.join(",")
+    }
+    const steps = search(state, [...keysPresent])
+    console.log('Steps', steps)
+    sum += steps
+}
+// Bottom-right
+{
+    const keysPresent = new Set()
+    const doorsPresent = new Set()
+    for(let x = ~~(width / 2); x < width; x++) {
+        for(let y = ~~(height / 2); y < height; y++) {
+            const tile = read(field, x, y)
+            if("abcdefghijklmnopqrstuvwxyz".indexOf(tile) !== -1) {
+                keysPresent.add(tile)
+            } else if("abcdefghijklmnopqrstuvwxyz".indexOf(tile.toLowerCase()) !== -1) {
+                doorsPresent.add(tile)
+            }
+        }
+    }
+    console.log(keysPresent, doorsPresent)
+    
+    // Check the keys outside their quadrant
+    const pos = positions[3]
+    let state = ""
+    {
+        const parts = [""]
+        parts.push(pos[0] + "|" + pos[1])
+        state = parts.join(",")
+    }
+    const steps = search(state, [...keysPresent])
+    console.log('Steps', steps)
+    sum += steps
+}
+console.log(sum)
 //const state = 
 
