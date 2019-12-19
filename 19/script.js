@@ -95,14 +95,61 @@ const execute = (data, input) => {
                 break;
         }
     }
-    return output
+    return output[0]
 }
 
 let sum = 0;
+let line = ""
 for(let x = 0; x < 50; x++) {
     for(let y = 0; y < 50; y++) {
-        const out = execute(program.split(",").map(x => +x), [x, y]);
-        sum += out[0]
+        let out = execute([...data], [x, y])
+        line += out ? "#" : "."
+        sum += out;
     }
+    line += "\n"
 }
+console.log(line)
 console.log(sum)
+
+// Part 2
+let minX = 0;
+let y = 100;
+totalouter:
+while(true) {
+    let width = 0
+    let x = minX
+    let out = 0;
+    do {
+        out = execute([...data], [x, y]);
+        //console.log("Checking", x, y, width, out)
+        if(out) {
+            if(width === 0) {
+                minX = x
+            }
+            width++
+        }
+        x++
+    } while(width == 0 || out)
+    
+    console.log(y, minX, x, x - minX)
+    if(width >= 100) {
+        for(let w = 0; w <= width - 100; w++) {
+            // Validate
+            let valid = execute([...data], [minX + w, y])
+                && execute([...data], [minX + w + 99, y])
+                && execute([...data], [minX + w, y + 99])
+                && execute([...data], [minX + w + 99, y + 99])
+            if(valid) {
+                console.log((minX + w) * 10000 + y)
+                break totalouter;
+            }
+        }
+    }
+    y++
+}
+
+// Validation
+//console.log(execute([...data], [1315, 1055]))
+//console.log(execute([...data], [1315 + 99, 1055]))
+//console.log(execute([...data], [1315, 1055 + 99]))
+//console.log(execute([...data], [1315 + 99, 1055 + 99]))
