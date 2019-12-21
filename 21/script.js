@@ -125,7 +125,14 @@ execute(data, [...[
     "NOT C J",
     "OR T J",
     "NOT A T",
-    "OR T J",
-    "AND D J",
-    "WALK\n",
+    "OR T J", // Any gap?
+    "AND D J", // Safe landing
+    
+    "NOT E T", // Followed by jumpable gap
+    "AND H T",
+    
+    "OR E T", // Or walkable
+    
+    "AND T J",
+    "RUN\n",
 ].join("\n")])
