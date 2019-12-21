@@ -138,7 +138,8 @@ const input = [
 "  ###########.#####  ",
 "             Z       ",
 "             Z       ",
-]/*
+]*/
+/*
 const input = [
 "                   A               ",
 "                   A               ",
@@ -177,8 +178,47 @@ const input = [
 "  #########.###.###.#############  ",
 "           B   J   C               ",
 "           U   P   P               ",
-]
-*/
+]*//*
+const input = [
+"             Z L X W       C                 ",
+"             Z P Q B       K                 ",
+"  ###########.#.#.#.#######.###############  ",
+"  #...#.......#.#.......#.#.......#.#.#...#  ",
+"  ###.#.#.#.#.#.#.#.###.#.#.#######.#.#.###  ",
+"  #.#...#.#.#...#.#.#...#...#...#.#.......#  ",
+"  #.###.#######.###.###.#.###.###.#.#######  ",
+"  #...#.......#.#...#...#.............#...#  ",
+"  #.#########.#######.#.#######.#######.###  ",
+"  #...#.#    F       R I       Z    #.#.#.#  ",
+"  #.###.#    D       E C       H    #.#.#.#  ",
+"  #.#...#                           #...#.#  ",
+"  #.###.#                           #.###.#  ",
+"  #.#....OA                       WB..#.#..ZH",
+"  #.###.#                           #.#.#.#  ",
+"CJ......#                           #.....#  ",
+"  #######                           #######  ",
+"  #.#....CK                         #......IC",
+"  #.###.#                           #.###.#  ",
+"  #.....#                           #...#.#  ",
+"  ###.###                           #.#.#.#  ",
+"XF....#.#                         RF..#.#.#  ",
+"  #####.#                           #######  ",
+"  #......CJ                       NM..#...#  ",
+"  ###.#.#                           #.###.#  ",
+"RE....#.#                           #......RF",
+"  ###.###        X   X       L      #.#.#.#  ",
+"  #.....#        F   Q       P      #.#.#.#  ",
+"  ###.###########.###.#######.#########.###  ",
+"  #.....#...#.....#.......#...#.....#.#...#  ",
+"  #####.#.###.#######.#######.###.###.#.#.#  ",
+"  #.......#.......#.#.#.#.#...#...#...#.#.#  ",
+"  #####.###.#####.#.#.#.#.###.###.#.###.###  ",
+"  #.......#.....#.#...#...............#...#  ",
+"  #############.#.#.###.###################  ",
+"               A O F   N                     ",
+"               A A D   M                     ",
+]*/
+
 const field = []
 const portals = {}
 
@@ -190,10 +230,10 @@ for(let y = 0; y < input.length; y++) {
 }
 
 const move = (pos, dir) => {
-    if(dir === 0) return {x: pos.x, y: pos.y - 1}; 
-    if(dir === 1) return {x: pos.x + 1, y: pos.y};
-    if(dir === 2) return {x: pos.x, y: pos.y + 1};
-    if(dir === 3) return {x: pos.x - 1, y: pos.y};
+    if(dir === 0) return {x: pos.x, y: pos.y - 1, z: pos.z}; 
+    if(dir === 1) return {x: pos.x + 1, y: pos.y, z: pos.z};
+    if(dir === 2) return {x: pos.x, y: pos.y + 1, z: pos.z};
+    if(dir === 3) return {x: pos.x - 1, y: pos.y, z: pos.z};
 }
 
 const read = (pos) => {
@@ -244,23 +284,27 @@ let start, exit
 for(let portal of Object.keys(portals)) {
     if(portals[portal].length == 2) {
         console.log(`Portal ${portal} from ${portals[portal][0].x}x${portals[portal][0].y} to ${portals[portal][1].x}x${portals[portal][1].y}`);
+        
+        // Check which one is the outer
+        let firstIsOuter = portals[portal][0].x === 1 || portals[portal][0].y === 1 || portals[portal][0].x === field.length - 2 || portals[portal][0].y === field[0].length - 2;
+        
         // Find proper exit
         for(let dir = 0; dir < 4; dir++) {
             const possibleExit = move(portals[portal][1], dir)
             if(read(possibleExit) === '.') {
-                field[portals[portal][0].x][portals[portal][0].y] = possibleExit
+                field[portals[portal][0].x][portals[portal][0].y] = {x: possibleExit.x, y: possibleExit.y, z: firstIsOuter ? -1 : 1}
             }
         }
         for(let dir = 0; dir < 4; dir++) {
             const possibleExit = move(portals[portal][0], dir)
             if(read(possibleExit) === '.') {
-                field[portals[portal][1].x][portals[portal][1].y] = possibleExit
+                field[portals[portal][1].x][portals[portal][1].y] = {x: possibleExit.x, y: possibleExit.y, z: firstIsOuter ? 1 : -1}
             }
         }
     } else if(portals[portal].length == 1) {
         console.log(`Exit ${portal} at ${portals[portal][0].x}x${portals[portal][0].y}`);
-        if(portal === 'AA') start = portals[portal][0];
-        if(portal === 'ZZ') exit = portals[portal][0];
+        if(portal === 'AA') start = {x: portals[portal][0].x, y: portals[portal][0].y, z: 0};
+        if(portal === 'ZZ') exit = {x: portals[portal][0].x, y: portals[portal][0].y, z: 0};
     } else {
         console.log(`!!! malformed portal ${portal}`);
     }
@@ -269,38 +313,26 @@ for(let portal of Object.keys(portals)) {
 // Part 1
 // BFS
 
-const drawPath = (hist) => {
-    let line = ""
-    for(let y = 0; y < field[0].length; y++) {
-        for(let x = 0; x < field.length; x++) {
-            if(hist.findIndex(h => h.x == x && h.y == y) !== -1) {
-                line += "O"
-            } else if(typeof(read({x:x, y:y})) === 'object') {
-                line += "]"
-            } else {
-                line += read({x:x, y:y})
-            }
-        }
-        line += "\n"
-    }
-    console.log(line)
-}
-
 const neighbours = (pos) => {
     const result = [];
     for(let dir = 0; dir < 4; dir++) {
         if(typeof(read(move(pos, dir))) === 'object') {
-            result.push(read(move(pos, dir)))
-        } else if(read(move(pos, dir)) === '.' || read(move(pos, dir)) === 'Z') {
+            const dest = read(move(pos, dir))
+            if(dest.z === -1 && pos.z == 0) {
+                // Can't take this one
+                continue
+            }
+            result.push({x: dest.x, y: dest.y, z: pos.z + dest.z})
+        } else if(read(move(pos, dir)) === '.' || (read(move(pos, dir)) === 'Z' && pos.z === 0)) {
             result.push(move(pos, dir));
         }
     }
     
-    return result.map(r => ({x: r.x, y: r.y, hist: [{x: pos.x, y: pos.y}, ...pos.hist]}))
+    return result
 }
 
 const visited = []
-let open = [{x: start.x, y: start.y, hist: []}]
+let open = [start]
 let steps = 0
 outer:
 while(open.length) {
@@ -308,15 +340,15 @@ while(open.length) {
     
     for(let state of open) {
         if(state.x === exit.x && state.y === exit.y) {
-            console.log("Found exit in", steps, "steps")
-            console.log(state.hist)
-            drawPath(state.hist)
+            console.log("Found exit in", steps, "steps", state.z)
+            //console.log(state.hist)
+            //drawPath(state.hist)
             break outer;
         }
         
         // Find neighbours
-        for(let neighbour of neighbours(state).filter(s => !(`${s.x},${s.y}` in visited))) {
-            visited[`${neighbour.x},${neighbour.y}`] = true
+        for(let neighbour of neighbours(state).filter(s => !(`${s.x},${s.y},${s.z}` in visited))) {
+            visited[`${neighbour.x},${neighbour.y},${neighbour.z}`] = true
             newOpen.push(neighbour)
         }
     }
