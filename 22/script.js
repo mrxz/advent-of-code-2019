@@ -206,7 +206,7 @@ const xgcd = (a, b) => {
     let prevy = 0; let y = 1;
     
     while(b) {
-        let q = ~~(a / b)
+        let q = Math.floor(a / b)
         let r = a % b;
         [x, prevx] = [prevx - q*x, x];
         [y, prevy] = [prevy - q*y, y];
@@ -214,7 +214,9 @@ const xgcd = (a, b) => {
     }
     return prevx
 }
-
+const inv = (x) => (xgcd(x, deckSize) + deckSize) % deckSize
+console.log(xgcd(21, deckSize))
+console.log(inv(21))
 
 const back = (card, m) => Number((BigInt(card) * BigInt((xgcd(m, deckSize) + deckSize) % deckSize)) % BigInt(deckSize))
 /*
@@ -232,9 +234,43 @@ for(let serie of series) {
     console.log(serie[0], result);
 }*/
 
+// Copied helper
+function expmod( base, exp, mod ){
+  if (exp == 0n) return 1n;
+  if (exp % 2n == 0n){
+    return (expmod( base, (exp / 2n), mod) ** 2n) % mod;
+  }
+  else {
+    return (base * expmod( base, (exp - 1n), mod)) % mod;
+  }
+}
+
+
+// Build matrix
+const reverseInput = [...input].reverse()
+let coefficients = [1, 0]
+for(let command of reverseInput) {
+    const parts = command.split(" ")
+    if(parts[0] === "cut") {
+        const n = +parts[1]
+        coefficients[1] = (coefficients[1] + n) % deckSize
+    } else if(parts[2] === "increment") {
+        const m = +parts[3]
+        coefficients[0] = Number((BigInt(coefficients[0]) * BigInt(inv(m))) % BigInt(deckSize))
+        coefficients[1] = Number((BigInt(coefficients[1]) * BigInt(inv(m))) % BigInt(deckSize))
+    } else {
+        coefficients[0] = (coefficients[0] * -1) + deckSize
+        coefficients[1] = (coefficients[1] * -1) + deckSize - 1
+    }
+}
+console.log(coefficients)
+console.log("Compute", coefficients[0], iterations, deckSize)
+const raised = expmod(BigInt(coefficients[0]), BigInt(iterations), BigInt(deckSize))
+const result = (raised * BigInt(checkCard) + BigInt(coefficients[1]) * (raised - 1n) * BigInt(inv(coefficients[0] - 1))) % BigInt(deckSize)
+console.log(raised, result)
+
 console.log("Reasoning backwards...")
 // Follow the desired card
-const reverseInput = [...input].reverse()
 {
     let card = checkCard
     let checking = true
