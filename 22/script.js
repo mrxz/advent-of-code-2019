@@ -131,7 +131,7 @@ input = [
 "deal with increment 9",
 "cut -2"
 ]
-
+/*
 input = [
 "deal into new stack",
 "cut -2",
@@ -146,8 +146,8 @@ input = [
 ]*/
 
 // Part 1
-const deckSize = 10007
-let deck = [...new Array(deckSize)].map((x, i) => i)
+const deckSize = 119315717514047
+//let deck = [...new Array(deckSize)].map((x, i) => i)
 
 // Deal a new deck
 const dealIntoNewStack = (deck) => deck.reverse()
@@ -180,53 +180,91 @@ const dealWithIncrement = (deck, n) => {
 }
 
 // convert input
-for(let command of input) {
-    const parts = command.split(" ")
-    if(parts[0] === "cut") {
-        deck = cut(deck, +parts[1])
-    } else if(parts[2] === "increment") {
-        deck = dealWithIncrement(deck, +parts[3])
-    } else {
-        deck = deck.reverse()
+const iterations = 101741582076661
+const checkCard = 2020
+/*
+for(let i = 0; i < iterations; i++) {
+    for(let command of input) {
+        const parts = command.split(" ")
+        if(parts[0] === "cut") {
+            deck = cut(deck, +parts[1])
+        } else if(parts[2] === "increment") {
+            deck = dealWithIncrement(deck, +parts[3])
+        } else {
+            deck = deck.reverse()
+        }
+        //console.log(deck, command)
     }
-    //console.log(deck, command)
 }
-console.log(deck.findIndex(c => c === 2019))
+console.log(deck[checkCard])
+*/
 
 // Part 2
+
+const xgcd = (a, b) => {
+    let prevx = 1; let x = 0;
+    let prevy = 0; let y = 1;
+    
+    while(b) {
+        let q = ~~(a / b)
+        let r = a % b;
+        [x, prevx] = [prevx - q*x, x];
+        [y, prevy] = [prevy - q*y, y];
+        [a, b] = [b, r];
+    }
+    return prevx
+}
+
+
+const back = (card, m) => Number((BigInt(card) * BigInt((xgcd(m, deckSize) + deckSize) % deckSize)) % BigInt(deckSize))
+/*
+const series = [
+    [1, [0,1,2,3,4,5,6,7,8,9]],
+    [3, [0,3,6,9,2,5,8,1,4,7]],
+    [7, [0,7,4,1,8,5,2,9,6,3]],
+    [9, [0,9,8,7,6,5,4,3,2,1]],
+]
+for(let serie of series) {
+    const result = []
+    for(let i = 0; i < serie[1].length; i++) {
+        result.push(back(serie[1][i], serie[0]))
+    }
+    console.log(serie[0], result);
+}*/
+
+console.log("Reasoning backwards...")
 // Follow the desired card
+const reverseInput = [...input].reverse()
 {
-    const deckSize = 100
-    const iterations = 101741582076661
-    let card = 9
+    let card = checkCard
     let checking = true
     let span = -1
     let show = -1
     const seen = {}
     for(let i = 0; i < iterations; i++) {
-        for(let command of input.reverse()) {
+        for(let command of reverseInput) {
             const parts = command.split(" ")
             if(parts[0] === "cut") {
                 const n = +parts[1]
-                card = ((card - n) + deckSize) % deckSize
+                card = (card + n + deckSize) % deckSize
             } else if(parts[2] === "increment") {
                 const m = +parts[3]
-                card = ~~(card / m) + (~~(deckSize/m) * (card % m))
+                card = back(card, m)
             } else {
                 card = (deckSize - 1) - card
             }
+            //console.log(card, command)
         }
-        console.log(card)
         if(checking && card in seen) {
             span = i - seen[card]
             console.log('Seen', card, 'before on iter', seen[card], 'now at', i, '(span', span, ')')
             i = iterations - ((iterations - i) % span)
-            show = i
+            show = i + span
             checking = false
             //break;
         }
-        if(i === show) {
-            console.log('show', i, card)
+        if(i === show || card === 3920265924568) {
+            console.log('show', i % span, card)
             show += span
         }
         seen[card] = i
