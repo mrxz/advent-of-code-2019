@@ -91,7 +91,27 @@ const execute = async (data, io) => {
 }
 const machines = {}
 const queue = {}
+const active = {}
+const yValues = []
+const checkStatus = () => {
+    if(Object.values(active).some(x => x) || !queue[255]) {
+        // Still one active
+        return; 
+    }
+    const p = queue[255][queue[255].length - 1]
+    console.log(`Idle detected, sending packet to 0: X=${p.x}, Y=${p.y}`, queue[0]);
+    if(yValues.indexOf(p.y) !== -1) {
+        console.log("Duplicate y value from NAT:", p.y);
+        process.exit()
+    }
+    yValues.push(p.y);
+
+    queue[0] = queue[0] || []
+    queue[0].push(p);
+    active[0] = true
+}
 for(let i = 0; i < 50; i++) {
+    active[i] = true
     machines[i] = (function() {
         const id = i;
         const input = [id] // Address
@@ -109,11 +129,15 @@ for(let i = 0; i < 50; i++) {
                 }
                 if(inputPtr < input.length) {
                     console.log(`${id} is reading ${input[inputPtr]}`) 
+                    active[id] = true
                     return Promise.resolve(input[inputPtr++])
                 }
+                active[id] = false
+                checkStatus()
                 return Promise.resolve(-1);
             },
             write: (value) => {
+                active[id] = true
                 if(!packet) {
                     packet = {dest: value};
                 } else if(!packet.x) {
@@ -123,6 +147,7 @@ for(let i = 0; i < 50; i++) {
                     console.log(`${id} sending packet to ${packet.dest}: (X=${packet.x}, Y=${packet.y})`)
                     queue[packet.dest] = queue[packet.dest] || []
                     queue[packet.dest].push(packet);
+                    if(packet.dest !== 255) active[packet.dest] = true
                     packet = null;
                 }
             }
